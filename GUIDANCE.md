@@ -49,7 +49,9 @@ valid and fails silently, so an "improvement" can de-authorize a real sender or
 weaken enforcement with no error anywhere. Copy the exact bytes.
 
 A DKIM key comes from the sending platform, not DNS Doctor — point the human at
-their email provider for DKIM, never fabricate a key.
+their email provider for DKIM, never fabricate a key. SPF is likewise
+diagnose-only: DNS Doctor deliberately emits no SPF fix record, so relay its SPF
+findings but never propose SPF edits of your own (e.g. `~all` → `-all`).
 
 ## Set expectations on enforcement
 
