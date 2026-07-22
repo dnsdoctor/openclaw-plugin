@@ -9,8 +9,11 @@ engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**
 
 ```
 openclaw-plugin/
-├── plugin.json    # manifest wrapping the MCP endpoint
-├── GUIDANCE.md    # the scan → diagnose → fix workflow + the verbatim-record rule
+├── plugin.json              # manifest wrapping the MCP endpoint
+├── GUIDANCE.md              # the scan → diagnose → fix workflow + the verbatim-record rule
+├── skills/dns-doctor/       # the ClawHub-publishable skill (REST-first, curl-only)
+│   └── SKILL.md
+├── LICENSE                  # Apache-2.0
 └── README.md
 ```
 
@@ -86,4 +89,6 @@ Anonymous access covers scanning and fixes. For the `dnsdoctor://domains` resour
 
 ## License
 
-Apache-2.0.
+[Apache-2.0](./LICENSE). (The `skills/dns-doctor` SKILL.md is additionally
+published on ClawHub, which force-licenses skills MIT-0 — accepted for that
+file's text only.)
