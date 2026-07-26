@@ -68,6 +68,14 @@ rate-limited per IP; a `429` means slow down, not failure. An optional API token
      out. Say "couldn't be resolved right now", never "your SPF is broken".
    - `info` is an honest "not found / not applicable" (e.g. no DKIM selector
      among the probed ones, or a redacted RDAP expiry) — never a failure.
+   - **Check `not_registered` before anything else.** When the report carries
+     `not_registered: true`, the domain has no DNS records at all — it is not
+     registered, or it has no nameservers. No check ran, so every status is an
+     `info` placeholder and **zero failing checks does not mean the domain is
+     healthy**. Say the domain does not resolve (a typo is the usual cause),
+     propose no SPF/DKIM/DMARC records for it — there is no zone to publish them
+     in — and don't offer monitoring until it resolves. The report's `next_steps`
+     summary says all of this; relay it.
 3. **Explain the findings** in plain language: what is wrong, why it lets mail
    be spoofed or land in spam, and what fixing it achieves.
 4. **Hand over the fix.** Use the check's `fix_record` from the report. The

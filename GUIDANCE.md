@@ -25,14 +25,21 @@ Domains are normalized server-side; a malformed domain returns a clean tool erro
    - **`temperror` is transient, NOT a failure** — a lookup timed out. Say "couldn't
      be resolved right now", not "your SPF is broken".
    - `info` is an honest "not found / not applicable", never a failure.
+   - **`not_registered: true` outranks all of it** — the domain has no DNS records
+     (unregistered, or no nameservers), so no check ran and every status is an
+     `info` placeholder. Zero failing checks there does **not** mean the domain is
+     healthy. Say it does not resolve (usually a typo), propose no records — there
+     is no zone to publish them in — and don't offer monitoring until it resolves.
 3. **Explain** what's wrong, why it lets mail be spoofed or land in spam, and what
    the fix achieves.
 4. **Get the DMARC fix** with `build_dmarc_upgrade`. It derives the alignment gate
    **server-side** — you cannot ask for `p=reject` without the evidence; it returns
    `p=reject` only when SPF is aligned and a DKIM selector was found, else caps at
-   `p=quarantine`. **`record` may be `null`** (the DMARC lookup temp-failed, or the
-   domain already applies a policy at least as strong as the scan justifies —
-   compared by effect, the `p` and `pct` the record would set, not by bytes) —
+   `p=quarantine`. **`record` may be `null`** (the domain does not exist; the
+   DMARC lookup itself hit NXDOMAIN while the existence probe did not resolve;
+   the DMARC lookup temp-failed; or the domain already applies a policy at least
+   as strong as the scan justifies — compared by effect, the `p` and `pct` the
+   record would set, not by bytes) —
    relay the `rationale` and never compose a record of your own to fill the gap.
    **`policy` describes the
    returned record** and is `null` whenever `record` is; the domain's observed
