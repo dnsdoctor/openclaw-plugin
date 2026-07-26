@@ -29,7 +29,7 @@ openclaw-plugin/
 | `scan_domain` | Fresh scan of a domain; full report. |
 | `get_report` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | A validated DMARC enforcement record — `p=reject` only when the server-derived alignment gate passes. |
-| `enroll_monitoring_trial` | Emails a human a double-opt-in link that creates their free account; monitoring starts once they add the domain and verify it with a TXT record. |
+| `enroll_monitoring_trial` | Emails a human a double-opt-in link that creates their free account; monitoring starts once they add the domain and verify it with a TXT record. **`email` must be the human's real inbox — ask for it; placeholders like `test@example.com` are rejected.** |
 
 The `dnsdoctor://domains` resource (your monitored domains) is always listed;
 reading it needs an API token and is refused without one. Anonymous access is

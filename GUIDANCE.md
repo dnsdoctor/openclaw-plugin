@@ -13,7 +13,7 @@ scan, explain the findings, hand the human the exact record, confirm the fix.
 | `scan_domain` | `{ domain }` | Fresh scan; the full report. Re-scanning the same domain within a minute reuses the stored report. |
 | `get_report` | `{ domain }` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | `{ domain }` | A validated DMARC enforcement record + rationale. Scans fresh — the record edits the domain's *current* tags, so it is never built on a stale one. |
-| `enroll_monitoring_trial` | `{ email, domain }` | Emails a human a double-opt-in link that creates their free account; they finish setup in the dashboard. |
+| `enroll_monitoring_trial` | `{ email, domain }` | Emails a human a double-opt-in link that creates their free account; they finish setup in the dashboard. **`email` must be the human's real inbox — ask for it; placeholders like `test@example.com` are rejected.** |
 
 Domains are normalized server-side; a malformed domain returns a clean tool error.
 
