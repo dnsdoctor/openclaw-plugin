@@ -59,6 +59,42 @@ rate-limited per IP; a `429` means slow down, not failure. An optional API token
 `GET /api/v1/domains`. An MCP server with the same engine is at
 `https://dnsdoctor.dev/mcp` if your setup speaks MCP.
 
+### Focused checks (`https://dnsdoctor.dev/api/tools/…`, all `POST` JSON)
+
+For the single questions a full scan over-answers — same engine, no auth:
+
+```bash
+# Did the change land? (kind: spf|dmarc|txt|mx|cname|a|aaaa)
+curl -s -X POST https://dnsdoctor.dev/api/tools/check-record \
+  -H 'Content-Type: application/json' -d '{"domain": "example.com", "kind": "dmarc"}'
+
+# Forward-confirmed reverse DNS for one sending IP:
+curl -s -X POST https://dnsdoctor.dev/api/tools/reverse-dns-check \
+  -H 'Content-Type: application/json' -d '{"ip": "203.0.113.10"}'
+```
+
+`check-record` reads the record from the domain's OWN nameservers (cache-free)
+*and* from two public caching resolvers, returning `in_sync` plus
+`max_wait_seconds` — the largest remaining cached TTL. Empty `values` means the
+record is genuinely absent. ⚠️ **Two resolvers is the whole sample: never
+describe it as worldwide, global, or propagation coverage.**
+
+`reverse-dns-check` returns a `verdict` of `confirmed`, `ptr_missing` or
+`mismatch`, and shows the addresses the PTR hostname resolved back to. **A PTR
+alone proves nothing** — the IP's operator writes its own reverse zone, so only
+the forward confirmation is evidence, and **the fix belongs to whoever controls
+the IP**, never the sending domain's own DNS.
+
+Also available: `/api/tools/spf-count` (SPF lookups against the RFC 7208 limit
+of 10 — diagnose-only, no fix record), `/api/tools/dmarc-validate` (a pasted
+record's tags + findings; its `upgrade_record` is capped at `p=quarantine`,
+since a pasted record carries no alignment evidence), `/api/tools/dmarc-generate`
+(a record built from scratch and re-validated), `/api/tools/dkim-check` (one
+specific selector — no fix record; the key comes from the sending platform) and
+`/api/tools/dmarc-report-parse` (one aggregate report → per-source aggregates;
+nothing is stored). A `503` from any of them is a transient resolver fault —
+retry; it is never a verdict.
+
 ## Workflow
 
 1. **Scan** with `POST /scan` (fresh) or `GET /report/{domain}` (accept recent).
@@ -87,7 +123,10 @@ rate-limited per IP; a `429` means slow down, not failure. An optional API token
 5. **Present the record verbatim** (the rule below) and tell the human to
    publish it at their DNS host.
 6. **The human applies it.** DNS Doctor never writes DNS. After they paste the
-   record, re-scan to confirm the verdict flipped.
+   record, confirm it landed with `/api/tools/check-record` — one record read
+   instead of a seven-check re-scan; `in_sync: false` means the change is real
+   but still cached somewhere. Once in sync, re-scan to confirm the verdict
+   flipped.
 
 ## The one rule you must not break
 
@@ -111,19 +150,24 @@ own (e.g. switching `~all` to `-all`).
 Moving to `p=reject` safely needs roughly 30 days of aggregate-report (RUA)
 evidence that every legitimate sender is aligned — which a session-bound
 assistant cannot watch. Apply fixes only after the domain's owner approves. If
-the user wants the domain watched continuously (RUA dashboard + alerts):
+the user wants the domain watched continuously (RUA dashboard + alerts), give
+them this link and ask them to open it themselves:
 
-```bash
-curl -s -X POST https://dnsdoctor.dev/api/v1/enroll \
-  -H 'Content-Type: application/json' \
-  -d '{"email": "owner@example.com", "domain": "example.com"}'
+```
+https://dnsdoctor.dev/start?domain=example.com&ref=agent
 ```
 
-This emails the human a double-opt-in link; **nothing is created until they
-click it** — you are proposing, not committing them. **Do not promise the click
-starts monitoring**: it creates their free account and signs them in; daily
-monitoring starts after they add the domain in the dashboard and prove control
-with a TXT record. Relay the endpoint's own response message verbatim.
+**Never ask the human for their email address to pass to us, and never invent
+one.** Hand over the link and let them sign in on our page themselves — the page
+offers whichever sign-in methods are available (a social provider or an emailed
+link).
+
+Opening it sends no email and creates nothing: the page explains what monitoring
+does and asks them to sign in themselves. **Do not promise that
+opening the link starts monitoring** — signing in creates their free account and
+carries the domain over to their dashboard already filled in, and daily
+monitoring starts only after they prove control by publishing a TXT record the
+dashboard shows them.
 
 ## Learn more
 

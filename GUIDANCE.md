@@ -13,7 +13,20 @@ scan, explain the findings, hand the human the exact record, confirm the fix.
 | `scan_domain` | `{ domain }` | Fresh scan; the full report. Re-scanning the same domain within a minute reuses the stored report. |
 | `get_report` | `{ domain }` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | `{ domain }` | A validated DMARC enforcement record + rationale. Scans fresh — the record edits the domain's *current* tags, so it is never built on a stale one. |
-| `enroll_monitoring_trial` | `{ email, domain }` | Emails a human a double-opt-in link that creates their free account; they finish setup in the dashboard. **`email` must be the human's real inbox — ask for it; placeholders like `test@example.com` are rejected.** |
+| `start_monitoring_signup` | `{ domain }` | A sign-up link to hand to the human who owns the domain, plus a `message` to relay. **Sends no email and creates nothing** — the human opens the link, signs in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard, already filled in, from there. |
+
+Seven focused tools for the single questions a full scan over-answers, each on
+the same validating engine:
+
+| Tool | Input | Returns |
+|---|---|---|
+| `count_spf_lookups` | exactly one of `{ domain }` or `{ record }` | The DNS lookups an SPF record costs against the RFC 7208 limit of 10, with the offending mechanisms named. `domain` counts recursively through nested includes; `record` parses a pasted record, its own terms only. **Diagnose-only — no SPF fix record.** |
+| `validate_dmarc_record` | `{ record }` | Parsed tags, level'd findings and validity for a pasted DMARC record. No DNS lookup. `upgrade_record` is **capped at `p=quarantine`** — a pasted record carries no alignment evidence, so `p=reject` needs `build_dmarc_upgrade`. |
+| `generate_dmarc_record` | `{ policy, rua_email?, subdomain_policy?, strict_alignment? }` | A DMARC record built from scratch for a domain that has none, re-validated before return. Use it instead of composing one. |
+| `check_dkim_selector` | `{ domain, selector }` | The verdict for ONE selector — the exact one the sending platform uses, which the common-selector sweep may miss. **No fix record**: the key comes from the platform. |
+| `parse_dmarc_report` | `{ content_base64 }` | One DMARC aggregate (RUA) report as per-source aggregates — who sent as the domain, how much, what share aligned. XML/`.gz`/`.zip`, ≤2 MiB decoded. Nothing is stored. |
+| `check_record` | `{ domain, kind, host? }` | **Did the change land?** The record as the domain's OWN nameservers serve it (cache-free) and as two public resolvers have it cached, plus whether they agree. `kind` is `spf\|dmarc\|txt\|mx\|cname\|a\|aaaa`. Empty `values` = genuinely absent; `max_wait_seconds` is the largest remaining cached TTL. ⚠️ **Two resolvers is the whole sample — never call it worldwide or propagation coverage.** |
+| `check_reverse_dns` | `{ ip }` | Forward-confirmed reverse DNS for one sending IP: the PTR, what it resolves back to, and a `verdict` of `confirmed`, `ptr_missing` or `mismatch`. **A PTR alone proves nothing**, and **the fix belongs to whoever controls the IP** — never the sending domain's own DNS. |
 
 Domains are normalized server-side; a malformed domain returns a clean tool error.
 
@@ -45,8 +58,11 @@ Domains are normalized server-side; a malformed domain returns a clean tool erro
    returned record** and is `null` whenever `record` is; the domain's observed
    policy is always `current_policy`.
 5. **Present the record verbatim** (see below).
-6. **The human applies it** in DNS (DNS Doctor never writes DNS), then re-scan to
-   confirm.
+6. **The human applies it** in DNS (DNS Doctor never writes DNS), then confirm it
+   landed. `check_record` is the cheap verify step — one record read from the
+   domain's own nameservers plus two public resolvers, instead of re-running
+   seven checks. `in_sync: false` means the change is real but still cached
+   somewhere. Once in sync, re-scan to confirm the verdict flipped.
 
 ## The rule you must not break
 
@@ -64,15 +80,21 @@ findings but never propose SPF edits of your own (e.g. `~all` → `-all`).
 
 Reaching `p=reject` safely needs ~30 days of aggregate-report evidence that every
 legitimate sender is aligned — a session-bound agent cannot watch that. Apply fixes
-only after the owner approves. For continuous monitoring, offer
-`enroll_monitoring_trial`: it emails the human a link and **nothing is created until
-they click it**.
+only after the owner approves. For continuous monitoring, call
+`start_monitoring_signup` and **give the human the `signup_url` it returns**: it
+sends no email and creates nothing.
 
-**Do not promise that the click starts monitoring.** Clicking creates their free
-account and signs them in — nothing more. Daily monitoring is gated on proving
-they control the domain, so they finish by adding it in the dashboard and
-publishing a TXT record. Relay the tool's returned message verbatim instead of
-paraphrasing it into "we're now watching your domain".
+**Never ask a human for their email address to pass to us, and never invent one.**
+Hand over the link and let them sign in on our page themselves — the page offers
+whichever sign-in methods are available (a social provider or an emailed link).
+
+**Do not promise that opening the link starts monitoring.** Signing in creates
+their free account and carries the domain over to their dashboard, already
+filled in — nothing more. Daily
+monitoring is gated on proving they control the domain, so they finish by
+publishing a TXT record the dashboard shows them. Relay the tool's returned
+`message` verbatim instead of paraphrasing it into "we're now watching your
+domain".
 
 ## Connect
 
