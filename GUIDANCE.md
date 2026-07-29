@@ -100,5 +100,8 @@ domain".
 
 - **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the scanner
   tools. The `dnsdoctor://domains` resource is always *listed*; reading it needs an
-  `Authorization: Bearer dnsd_…` token and is refused without one.
+  `Authorization: Bearer dnsd_…` token and is refused without one. **You cannot mint
+  that token** — the account owner creates it while signed in at `/dashboard/settings`,
+  and the refusal names the page. Relay the link; never ask anyone to paste a
+  credential to you.
 - Methodology: <https://dnsdoctor.dev/methodology>
