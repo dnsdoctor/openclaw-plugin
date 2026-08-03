@@ -66,6 +66,8 @@ Domains are normalized server-side; a malformed domain returns a clean tool erro
    seven checks. `in_sync: false` means the change is real but still cached
    somewhere. Once in sync, re-scan to confirm the verdict flipped.
 
+**The DMARC check's `details` can report external RUA authorization** (RFC 7489 §7.1): when a domain sends aggregate reports to a third-party domain that has not published the authorization record, those reports are **silently discarded** — the DMARC record still looks correct while the owner collects nothing. Reported as a detail, never a status change (the domain's own config is not at fault), but relay it: a rollout waiting on evidence that never arrives is a stall with no visible cause.
+
 ## The rule you must not break
 
 **Present any returned record string exactly as given. Never rewrite, reformat,

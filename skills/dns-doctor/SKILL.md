@@ -97,6 +97,37 @@ specific selector — no fix record; the key comes from the sending platform) an
 nothing is stored). A `503` from any of them is a transient resolver fault —
 retry; it is never a verdict.
 
+```bash
+# Who can transitively send as this domain — walks the whole include tree:
+curl -s -X POST https://dnsdoctor.dev/api/tools/spf-audit \
+  -H 'Content-Type: application/json' -d '{"domain": "example.com"}'
+
+# The hardening pack for a domain that sends NO mail:
+curl -s -X POST https://dnsdoctor.dev/api/tools/parked-domain-records \
+  -H 'Content-Type: application/json' \
+  -d '{"domain": "example.com", "confirm_no_mail": true}'
+```
+
+`spf-audit` resolves the full `include`/`redirect` tree and reports what a lookup
+count cannot: includes that are broken today, an include target whose registrable
+domain is **confirmed unregistered** (anyone could register it and become an
+authorized sender), targets expiring within 30 days, and a `+all` nested anywhere
+in the tree. It also totals the IPv4 addresses the record transitively authorizes.
+An unresolved edge is reported as `not_evaluated`, never dropped, and registration
+is called absent only on confirmed evidence — **any lookup fault reports
+"unverified", never "available"**. Diagnose-only, like every SPF surface here: it
+returns no fix record.
+
+`parked-domain-records` returns three records for a **non-sending** domain — Null
+MX, `v=spf1 -all`, and `_dmarc` at `p=reject; np=reject`. `confirm_no_mail: true`
+unlocks the *question*, not the answer: the server independently checks the domain
+from DNS (existence, MX, pass-capable SPF mechanisms, a DKIM selector sweep) and
+answers `200` with `records: null` plus a `rationale` if it finds any evidence of
+mail. Any transient lookup failure refuses too, because this output ends in `-all`
+and a wrong one silently de-authorizes a real sender. **Never set the flag on your
+own judgement — ask the human who owns the domain**, and treat a refusal as the
+answer rather than something to work around.
+
 ## Workflow
 
 1. **Scan** with `POST /scan` (fresh) or `GET /report/{domain}` (accept recent).
@@ -129,6 +160,8 @@ retry; it is never a verdict.
    instead of a seven-check re-scan; `in_sync: false` means the change is real
    but still cached somewhere. Once in sync, re-scan to confirm the verdict
    flipped.
+
+**The DMARC check's `details` can report external RUA authorization** (RFC 7489 §7.1): when the domain sends aggregate reports to a third-party domain that has not published the authorization record, those reports are **silently discarded** — the DMARC record still looks correct while the owner collects nothing. Reported as a detail, never a status change (the domain's own config is not at fault), but relay it: a rollout waiting on evidence that never arrives is a stall with no visible cause.
 
 ## The one rule you must not break
 
