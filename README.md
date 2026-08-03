@@ -29,6 +29,15 @@ openclaw-plugin/
 | `scan_domain` | Fresh scan of a domain; full report. |
 | `get_report` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | A validated DMARC enforcement record — `p=reject` only when the server-derived alignment gate passes. |
+| `count_spf_lookups` | The SPF DNS-lookup count against the RFC limit of 10. |
+| `validate_dmarc_record` | Parse and validate a DMARC record, tag by tag. |
+| `generate_dmarc_record` | Build a DMARC record from a policy + reporting address. |
+| `check_dkim_selector` | Look up one DKIM selector and check the key. |
+| `parse_dmarc_report` | Parse an aggregate (RUA) report file into rows. |
+| `check_record` | Read any DNS record type for a name. |
+| `check_reverse_dns` | PTR / forward-confirmed reverse DNS for an IP. |
+| `audit_spf_includes` | The SPF include/redirect tree — who can transitively send as the domain, with typed findings (broken include, confirmed-unregistered include, expiring registration, nested `+all`). Analysis only; no SPF fix record. |
+| `build_parked_domain_records` | The Null MX + `v=spf1 -all` + `p=reject; np=reject` hardening pack for a domain that sends no mail. The server re-checks DNS itself and refuses when it finds evidence of mail. |
 | `start_monitoring_signup` | A sign-up link to hand to the human who owns the domain. Sends no email and creates nothing — they open it, sign in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard already filled in; monitoring starts once they verify it with a TXT record. |
 
 The `dnsdoctor://domains` resource (your monitored domains) is always listed;
