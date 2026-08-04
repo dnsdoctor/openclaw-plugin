@@ -22,7 +22,7 @@ openclaw-plugin/
 > names if they've changed — the MCP endpoint (`https://dnsdoctor.dev/mcp`, HTTP
 > transport) is the part that must survive.
 
-## Tools it adds
+## Tools
 
 | Tool | Does |
 |---|---|
