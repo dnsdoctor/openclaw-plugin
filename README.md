@@ -39,10 +39,15 @@ openclaw-plugin/
 | `audit_spf_includes` | The SPF include/redirect tree — who can transitively send as the domain, with typed findings (broken include, confirmed-unregistered include, expiring registration, nested `+all`). Analysis only; no SPF fix record. |
 | `build_parked_domain_records` | The Null MX + `v=spf1 -all` + `p=reject; np=reject` hardening pack for a domain that sends no mail. The server re-checks DNS itself and refuses when it finds evidence of mail. |
 | `start_monitoring_signup` | A sign-up link to hand to the human who owns the domain. Sends no email and creates nothing — they open it, sign in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard already filled in; monitoring starts once they verify it with a TXT record. |
+| `get_alerts` | **Token required.** The account's monitoring alert log, newest first. Read-only — no acknowledge, no delete. Page down with `before` until `next_before` is `null` before advancing `since`. |
+| `get_readiness` | **Token required.** Whether one monitored domain's aggregate-report evidence justifies a stronger DMARC policy yet: `ready`, the `blockers`, and `next_record` (validated, or `null` while blocked — which is an answer, not a gap). |
 
-The `dnsdoctor://domains` resource (your monitored domains) is always listed;
-reading it needs an API token and is refused without one. Anonymous access is
-enough for a one-off diagnosis.
+The two monitoring reads are **listed for everyone and callable with a token**:
+they appear in the tool list, and without a valid token the call is refused with
+the page the account owner mints one on. The `dnsdoctor://domains` resource
+(your monitored domains) is likewise always listed and refused without a token.
+Anonymous access covers all thirteen diagnosis tools, which is enough for a
+one-off diagnosis.
 
 ## Install
 
@@ -54,7 +59,9 @@ enough for a one-off diagnosis.
 
 ## Optional: API token for monitored domains
 
-Anonymous access covers scanning and fixes. For the `dnsdoctor://domains` resource:
+Anonymous access covers scanning and fixes. A per-account API token unlocks the
+account's own monitoring data: the `get_alerts` and `get_readiness` tools, and
+the `dnsdoctor://domains` resource:
 
 1. Sign in at <https://dnsdoctor.dev> → **Settings → API tokens** → create a token
    (the `dnsd_…` plaintext is shown once).

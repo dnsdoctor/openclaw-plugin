@@ -30,7 +30,23 @@ the same validating engine:
 | `audit_spf_includes` | `{ domain }` | **Who can transitively send as the domain.** Walks every `include`/`redirect` and returns the tree, per-node lookup attribution, the total authorized IPv4 count, and typed findings: `include_broken` (target publishes no SPF — a PermError today), `include_registrable` (a delegated-to domain that does not exist, so a stranger who registers it becomes an authorized sender), `include_expiring` (≤30 days), `pass_all_nested` (a `+all` deep in the chain), `spf_record_unusable` (the audited domain's OWN record is missing or does not parse, so there is no chain to walk). Unfinished nodes are marked `not_evaluated`, never dropped. **Unverified is reported as unverified, never as available** — and only an `include_registrable` finding carrying `registry_confirmed: true` rests on the registry's word; on `false` the proof is DNS alone, which a name in redemption answers identically, so never call it available. Still **no SPF fix record** — the findings are analysis. |
 | `build_parked_domain_records` | `{ domain, confirm_no_mail: true, rua_email? }` | The three-record pack that makes a **non-sending** domain unusable for spoofing: Null MX, hard-fail SPF, `p=reject; np=reject` DMARC — in rollout order, each with a `check_record` verify step. Parked/redirect/brand-defensive domains only. **Never set `confirm_no_mail` yourself** (see below); the server re-checks DNS and returns `records: null` + `rationale` on evidence of mail. A lookup failure is a failure, never a pack. |
 
-Domains are normalized server-side; a malformed domain returns a clean tool error.
+Two monitoring reads over the account's **own** monitored domains. Both need a
+bearer token (see **Connect**), both are **read-only by decision**, and both run
+the same cores the dashboard reads — the agent and the human are never told
+different things:
+
+| Tool | Input | Returns |
+|---|---|---|
+| `get_alerts` | `{ since?, domain?, type?, limit?, before? }` | The account's monitoring alert log, newest first: `id`, `domain`, `type`, `check`, `summary`, a deterministic `detail` map, `created_at`, `email_sent_at`, `acknowledged_at`, `delivery_class`. A `dashboard_only` row was deliberately kept out of the digest mail — an agent watching only a mailbox sees less than this log holds. **Page down before advancing `since`:** pass `next_before` back as `before` until it is `null`, *then* move the watermark; jumping `since` to the newest row of a full page silently drops the rest. `since` is an **inclusive** floor, so rows repeat rather than disappear — de-duplicate on `id`. **No ack, no delete** — acking is the human's own triage, and an agent that acks silences a row the human never saw. |
+| `get_readiness` | `{ domain }` | The DMARC enforcement-readiness verdict for ONE monitored domain from its aggregate (RUA) window: `ready`, `current_step`, `next_step`, `blockers`, `window_days`, `total_messages`, `progress`, `enrollment`, and `next_record` — engine-generated and **`null` while blocked, which is an answer**: relay the blockers, never compose a stronger record. Ask this before proposing enforcement; a scan shows the current policy, only this window says whether tightening it would reject real mail. |
+
+Anonymous or invalid-token calls to either are refused with the page the owner
+mints a token on. Relay the page; do not retry around it, and never ask for a
+credential.
+
+Domains are normalized server-side; a malformed domain returns a clean tool
+error. A domain the token's account does not verifiably own returns the same
+"not found" as one that does not exist — deliberate, and not to be probed around.
 
 ## Workflow
 
@@ -123,6 +139,10 @@ emails **alerts** on verdict changes and new sending sources, ingests the
 domain's DMARC **aggregate (RUA) reports**, and derives an enforcement
 **readiness** verdict from them. None of that comes from a one-off scan.
 
+Once the domain is verified and the owner has put a token in their agent's
+environment, `get_alerts` and `get_readiness` read exactly that — see the operate
+loop below.
+
 ## Playbooks
 
 Evidence sequences, not scripts — run the step, read what it rules in or out,
@@ -157,13 +177,25 @@ will improve by. An invented number beside real evidence reads as scan output.
   `records: null` means relay the `rationale` and drop that domain; a transient
   is a retry → on a pass present the three records verbatim in order, human
   approves, `check_record` each (`mx`, `spf`, `dmarc`).
+- **The operate loop (a monitored domain, over time).** `start_monitoring_signup`
+  → the human signs in and publishes the TXT ownership record (nothing is
+  readable until verification passes) → `get_alerts` on a cadence, paging down
+  with `before` until `next_before` is `null` before advancing `since`, and
+  de-duplicating on `id` → `get_readiness` before proposing enforcement
+  (`ready: false` means the `blockers` are the answer) → `build_dmarc_upgrade`,
+  or the readiness verdict's own `next_record`, presented verbatim → the human
+  approves and publishes → `check_record kind=dmarc`, then `scan_domain` to
+  confirm the verdict flipped → back to the watch step. Never ack on the human's
+  behalf (there is no such tool, deliberately), and never read a quiet page as
+  proof of health when a page was skipped to get there.
 
 ## Connect
 
-- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the scanner
-  tools. The `dnsdoctor://domains` resource is always *listed*; reading it needs an
-  `Authorization: Bearer dnsd_…` token and is refused without one. **You cannot mint
-  that token** — the account owner creates it while signed in at `/dashboard/settings`,
-  and the refusal names the page. Relay the link; never ask anyone to paste a
-  credential to you.
+- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the thirteen
+  diagnosis tools. `get_alerts`, `get_readiness` and the `dnsdoctor://domains`
+  resource are always *listed* and need an `Authorization: Bearer dnsd_…` token;
+  without a valid one the call is refused with guidance rather than hidden.
+  **You cannot mint that token** — the account owner creates it while signed in at
+  `/dashboard/settings`, and the refusal names the page. Relay the link; never ask
+  anyone to paste a credential to you.
 - Methodology: <https://dnsdoctor.dev/methodology>
