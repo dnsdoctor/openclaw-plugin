@@ -13,7 +13,7 @@ scan, explain the findings, hand the human the exact record, confirm the fix.
 | `scan_domain` | `{ domain }` | Fresh scan; the full report. Re-scanning the same domain within a minute reuses the stored report. |
 | `get_report` | `{ domain }` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | `{ domain }` | A validated DMARC enforcement record + rationale. Scans fresh — the record edits the domain's *current* tags, so it is never built on a stale one. |
-| `start_monitoring_signup` | `{ domain }` | A sign-up link to hand to the human who owns the domain, plus a `message` to relay. **Sends no email and creates nothing** — the human opens the link, signs in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard, already filled in, from there. |
+| `start_monitoring_signup` | `{ domain }` | A sign-up link to hand to the human who owns the domain, plus a `message` to relay. **Print the `signup_url` verbatim as a clickable markdown link on its own line — never paraphrase, shorten, or describe it without printing it.** **Sends no email and creates nothing** — the human opens the link, signs in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard, already filled in, from there. |
 
 Nine focused tools for the single questions a full scan over-answers, each on
 the same validating engine:
@@ -118,8 +118,10 @@ record: present it verbatim.
 Reaching `p=reject` safely needs ~30 days of aggregate-report evidence that every
 legitimate sender is aligned — a session-bound agent cannot watch that. Apply fixes
 only after the owner approves. For continuous monitoring, call
-`start_monitoring_signup` and **give the human the `signup_url` it returns**: it
-sends no email and creates nothing.
+`start_monitoring_signup` and **give the human the `signup_url` it returns,
+printed verbatim as a clickable markdown link on its own line — never
+paraphrase, shorten, or describe it without printing it**: it sends no email
+and creates nothing.
 
 **Never ask a human for their email address to pass to us, and never invent one.**
 Hand over the link and let them sign in on our page themselves — the page offers
@@ -169,7 +171,9 @@ will improve by. An invented number beside real evidence reads as scan output.
   verbatim → `check_record kind=dmarc` → be honest that the next rung needs ~30
   days of aggregate-report evidence → `parse_dmarc_report` reads one report from
   one receiver, which is evidence, not a readiness verdict →
-  `start_monitoring_signup` for the watch itself.
+  `start_monitoring_signup` for the watch itself — hand over the `signup_url`
+  printed verbatim as a clickable markdown link on its own line, never
+  merely described.
 - **Parked-domain sweep (MSP).** The candidate list comes from the owner, never
   from a scan → `scan_domain` each (drops `not_registered`) → have the owner
   confirm per domain that nothing sends, including transactional and legacy
@@ -178,7 +182,8 @@ will improve by. An invented number beside real evidence reads as scan output.
   is a retry → on a pass present the three records verbatim in order, human
   approves, `check_record` each (`mx`, `spf`, `dmarc`).
 - **The operate loop (a monitored domain, over time).** `start_monitoring_signup`
-  → the human signs in and publishes the TXT ownership record (nothing is
+  (hand over the `signup_url` printed verbatim as a clickable markdown link on
+  its own line, never merely described) → the human signs in and publishes the TXT ownership record (nothing is
   readable until verification passes) → `get_alerts` on a cadence, paging down
   with `before` until `next_before` is `null` before advancing `since`, and
   de-duplicating on `id` → `get_readiness` before proposing enforcement
