@@ -205,7 +205,7 @@ describe("reading config out of a gateway snapshot", () => {
 
   it("degrades to the env fallback on any shape it does not recognize", () => {
     // The per-plugin entry map has moved between gateway versions; throwing here
-    // would take all 15 tools down over a key that has an env twin anyway.
+    // would take all 16 tools down over a key that has an env twin anyway.
     for (const config of [undefined, null, {}, { plugins: {} }, "nonsense", { plugins: 3 }]) {
       expect(settingsFromConfig(config)).toEqual({});
     }

@@ -11,6 +11,7 @@
       "build_dmarc_upgrade",
       "build_parked_domain_records",
       "check_dkim_selector",
+      "check_propagation",
       "check_record",
       "check_reverse_dns",
       "count_spf_lookups",

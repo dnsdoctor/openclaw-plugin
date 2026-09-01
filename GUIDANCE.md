@@ -15,7 +15,7 @@ scan, explain the findings, hand the human the exact record, confirm the fix.
 | `build_dmarc_upgrade` | `{ domain }` | A validated DMARC enforcement record + rationale. Scans fresh — the record edits the domain's *current* tags, so it is never built on a stale one. |
 | `start_monitoring_signup` | `{ domain }` | A sign-up link to hand to the human who owns the domain, plus a `message` to relay. **Print the `signup_url` verbatim as a clickable markdown link on its own line — never paraphrase, shorten, or describe it without printing it.** **Sends no email and creates nothing** — the human opens the link, signs in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard, already filled in, from there. |
 
-Nine focused tools for the single questions a full scan over-answers, each on
+Ten focused tools for the single questions a full scan over-answers, each on
 the same validating engine:
 
 | Tool | Input | Returns |
@@ -26,6 +26,7 @@ the same validating engine:
 | `check_dkim_selector` | `{ domain, selector }` | The verdict for ONE selector — the exact one the sending platform uses, which the common-selector sweep may miss. **No fix record**: the key comes from the platform. |
 | `parse_dmarc_report` | `{ content_base64 }` | One DMARC aggregate (RUA) report as per-source aggregates — who sent as the domain, how much, what share aligned. XML/`.gz`/`.zip`, ≤2 MiB decoded. Nothing is stored. |
 | `check_record` | `{ domain, kind, host? }` | **Did the change land?** The record as the domain's OWN nameservers serve it (cache-free) and as two public resolvers have it cached, plus whether they agree. `kind` is `spf\|dmarc\|txt\|mx\|cname\|a\|aaaa`. Empty `values` = genuinely absent; `max_wait_seconds` is the largest remaining cached TTL. ⚠️ **Two resolvers is the whole sample — never call it worldwide or propagation coverage.** |
+| `check_propagation` | `{ name, record_type?, expected_value? }` | **Has the change gone global?** Six vantage points — five owner-run probes on separate continents plus this server's own resolver — read the same name through several resolvers each, returning the grid plus a deterministic `verdict`. Call it after the human publishes a record: **you have ONE network vantage point**, and a record that resolves for you can still be missing elsewhere. `name` is used exactly as given — no `www.` strip, `_dmarc.example.com` works — so pass the name the record lives at, not the registrable domain. `record_type` is `A\|AAAA\|CNAME\|MX\|TXT\|NS` (SPF/DMARC are `TXT`). With `expected_value` each cell is match or mismatch; without it the check reports only whether the vantage points agree. **Observation only — no record is ever composed here.** An `unavailable` cell is a probe that did not answer, **not** a record that is absent there, and below three vantage points reached the verdict downgrades to `unknown` — report `vantage_reached` of `vantage_total` rather than calling a name converged on partial coverage. |
 | `check_reverse_dns` | `{ ip }` | Forward-confirmed reverse DNS for one sending IP: the PTR, what it resolves back to, and a `verdict` of `confirmed`, `ptr_missing` or `mismatch`. **A PTR alone proves nothing**, and **the fix belongs to whoever controls the IP** — never the sending domain's own DNS. |
 | `audit_spf_includes` | `{ domain }` | **Who can transitively send as the domain.** Walks every `include`/`redirect` and returns the tree, per-node lookup attribution, the total authorized IPv4 count, and typed findings: `include_broken` (target publishes no SPF — a PermError today), `include_registrable` (a delegated-to domain that does not exist, so a stranger who registers it becomes an authorized sender), `include_expiring` (≤30 days), `pass_all_nested` (a `+all` deep in the chain), `spf_record_unusable` (the audited domain's OWN record is missing or does not parse, so there is no chain to walk). Unfinished nodes are marked `not_evaluated`, never dropped. **Unverified is reported as unverified, never as available** — and only an `include_registrable` finding carrying `registry_confirmed: true` rests on the registry's word; on `false` the proof is DNS alone, which a name in redemption answers identically, so never call it available. Still **no SPF fix record** — the findings are analysis. |
 | `build_parked_domain_records` | `{ domain, confirm_no_mail: true, rua_email? }` | The three-record pack that makes a **non-sending** domain unusable for spoofing: Null MX, hard-fail SPF, `p=reject; np=reject` DMARC — in rollout order, each with a `check_record` verify step. Parked/redirect/brand-defensive domains only. **Never set `confirm_no_mail` yourself** (see below); the server re-checks DNS and returns `records: null` + `rationale` on evidence of mail. A lookup failure is a failure, never a pack. |
@@ -81,6 +82,19 @@ error. A domain the token's account does not verifiably own returns the same
    domain's own nameservers plus two public resolvers, instead of re-running
    seven checks. `in_sync: false` means the change is real but still cached
    somewhere. Once in sync, re-scan to confirm the verdict flipped.
+7. **Confirm it went global** with `check_propagation`. `check_record` and your
+   own resolver are one network vantage point between them — a record can be
+   live for you and still missing for a receiver in another region, the window
+   in which a half-propagated DMARC or MX change breaks mail. It reads the same
+   name from six vantage points on separate continents and returns a
+   deterministic `verdict`. Report what came back: an `unavailable` cell is a
+   probe that did not answer, **never** evidence the record is absent there, and
+   a `verdict` of `unknown` means coverage was too thin to call — say so with
+   `vantage_reached` of `vantage_total` instead of rounding it up to
+   "propagated". The same check runs for the human at
+   [https://dnsdoctor.dev/tools/dns-propagation-checker](https://dnsdoctor.dev/tools/dns-propagation-checker);
+   if you offer it, **print that link verbatim as a clickable markdown link** —
+   a link described but not printed never reaches them.
 
 **The DMARC check's `details` can report external RUA authorization** (RFC 7489 §7.1): when a domain sends aggregate reports to a third-party domain that has not published the authorization record, those reports are **silently discarded** — the DMARC record still looks correct while the owner collects nothing. Reported as a detail, never a status change (the domain's own config is not at fault), but relay it: a rollout waiting on evidence that never arrives is a stall with no visible cause.
 
@@ -196,7 +210,7 @@ will improve by. An invented number beside real evidence reads as scan output.
 
 ## Connect
 
-- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the thirteen
+- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the fourteen
   diagnosis tools. `get_alerts`, `get_readiness` and the `dnsdoctor://domains`
   resource are always *listed* and need an `Authorization: Bearer dnsd_…` token;
   without a valid one the call is refused with guidance rather than hidden.

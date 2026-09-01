@@ -193,7 +193,7 @@ export function unroutedTools(): string[] {
 }
 
 /**
- * The tool factory the gateway calls: all 15 tools, built from one context.
+ * The tool factory the gateway calls: all 16 tools, built from one context.
  *
  * All three config sources the context may carry are consulted, freshest first:
  * `getRuntimeConfig()` (a getter, so a config edit applies without a reload),

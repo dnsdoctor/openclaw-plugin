@@ -35,6 +35,7 @@ openclaw-plugin/
 | `check_dkim_selector` | Look up one DKIM selector and check the key. |
 | `parse_dmarc_report` | Parse an aggregate (RUA) report file into rows. |
 | `check_record` | Read any DNS record type for a name. |
+| `check_propagation` | Whether a DNS change has gone global: six vantage points (five owner-run probes plus the server's own resolver) read the same name, returning the grid plus a deterministic verdict. Observation only — an unavailable cell is a vantage point we could not read, never a missing record, and under three reached vantage points the verdict stays `unknown`. |
 | `check_reverse_dns` | PTR / forward-confirmed reverse DNS for an IP. |
 | `audit_spf_includes` | The SPF include/redirect tree — who can transitively send as the domain, with typed findings (broken include, confirmed-unregistered include, expiring registration, nested `+all`). Analysis only; no SPF fix record. |
 | `build_parked_domain_records` | The Null MX + `v=spf1 -all` + `p=reject; np=reject` hardening pack for a domain that sends no mail. The server re-checks DNS itself and refuses when it finds evidence of mail. |
@@ -46,7 +47,7 @@ The two monitoring reads are **listed for everyone and callable with a token**:
 they appear in the tool list, and without a valid token the call is refused with
 the page the account owner mints one on. The `dnsdoctor://domains` resource
 (your monitored domains) is likewise always listed and refused without a token.
-Anonymous access covers all thirteen diagnosis tools, which is enough for a
+Anonymous access covers all fourteen diagnosis tools, which is enough for a
 one-off diagnosis.
 
 ## Install
