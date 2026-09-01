@@ -1,7 +1,7 @@
 {
   "name": "@dnsdoctor/openclaw-plugin",
-  "version": "1.5.0",
-  "description": "OpenClaw plugin for DNS Doctor — diagnoses SPF, DMARC, DKIM, MX, DNS, blacklist and expiry over the public DNS Doctor REST API.",
+  "version": "1.6.0",
+  "description": "OpenClaw plugin for DNS Doctor — scan, fix and verify a domain's DNS: SPF, DMARC, DKIM, multi-region propagation, MX, DNS health, blacklists and expiry, over the public DNS Doctor REST API.",
   "license": "Apache-2.0",
   "author": {
     "name": "DNS Doctor",
