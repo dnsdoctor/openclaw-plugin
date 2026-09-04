@@ -253,7 +253,7 @@ describe("tool construction", () => {
   it("returns the body verbatim in details and pretty JSON in content", async () => {
     const body = {
       domain: "example.com",
-      record: "v=DMARC1; p=quarantine; pct=25",
+      record: "v=DMARC1; p=quarantine; np=reject",
       nested: { keep: [1, 2, 3] },
     };
     fetchMock.mockResolvedValue(jsonResponse(200, body));

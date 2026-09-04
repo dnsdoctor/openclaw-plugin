@@ -29,7 +29,7 @@ openclaw-plugin/
 |---|---|
 | `scan_domain` | Fresh scan of a domain; full report. |
 | `get_report` | Persisted report (scans once if none exists). |
-| `build_dmarc_upgrade` | A validated DMARC enforcement record — `p=reject` only when the server-derived alignment gate passes. |
+| `build_dmarc_upgrade` | A validated DMARC enforcement record, capped at `p=quarantine` and returned only when the server-derived alignment gate passes; without that evidence the answer is reporting-first and no record is returned. `p=reject` comes from the readiness engine's aggregate-report evidence, never from a scan. |
 | `count_spf_lookups` | The SPF DNS-lookup count against the RFC limit of 10. |
 | `validate_dmarc_record` | Parse and validate a DMARC record, tag by tag. |
 | `generate_dmarc_record` | Build a DMARC record from a policy + reporting address. |
@@ -91,11 +91,12 @@ the `dnsdoctor://domains` resource:
 > isn't rejected. SPF is aligned (6/10 lookups). DKIM selector found and valid. Not
 > blacklisted.
 >
-> **Agent** (`build_dmarc_upgrade`): Alignment holds, so `p=reject` is safe. Publish
-> this exact TXT record at `_dmarc.example.com` — paste it verbatim:
+> **Agent** (`build_dmarc_upgrade`): Alignment holds, so the recommendation reaches
+> its ceiling, `p=quarantine`. Publish this exact TXT record at
+> `_dmarc.example.com` — paste it verbatim:
 >
 > ```
-> v=DMARC1; p=reject; rua=mailto:dmarc@example.com; adkim=r; aspf=r
+> v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com; adkim=r; aspf=r; np=reject
 > ```
 >
 > Apply it in DNS once approved, then re-scan to confirm.

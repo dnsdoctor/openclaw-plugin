@@ -23,7 +23,7 @@ the same validating engine:
 | Tool | Input | Returns |
 |---|---|---|
 | `count_spf_lookups` | exactly one of `{ domain }` or `{ record }` | The DNS lookups an SPF record costs against the RFC 7208 limit of 10, with the offending mechanisms named. `domain` counts recursively through nested includes; `record` parses a pasted record, its own terms only. **Diagnose-only — no SPF fix record.** |
-| `validate_dmarc_record` | `{ record }` | Parsed tags, level'd findings and validity for a pasted DMARC record. No DNS lookup. `upgrade_record` is **capped at `p=quarantine`** — a pasted record carries no alignment evidence, so `p=reject` needs `build_dmarc_upgrade`. |
+| `validate_dmarc_record` | `{ record }` | Parsed tags, level'd findings and validity for a pasted DMARC record. No DNS lookup. `upgrade_record` is **capped at `p=quarantine`** — a pasted record carries no alignment evidence, and `p=quarantine` is the ceiling any scan can justify; `p=reject` comes only from the readiness engine's aggregate-report evidence. |
 | `generate_dmarc_record` | `{ policy, rua_email?, subdomain_policy?, strict_alignment? }` | A DMARC record built from scratch for a domain that has none, re-validated before return. Use it instead of composing one. |
 | `check_dkim_selector` | `{ domain, selector }` | The verdict for ONE selector — the exact one the sending platform uses, which the common-selector sweep may miss. **No fix record**: the key comes from the platform. |
 | `parse_dmarc_report` | `{ content_base64 }` | One DMARC aggregate (RUA) report as per-source aggregates — who sent as the domain, how much, what share aligned. XML/`.gz`/`.zip`, ≤2 MiB decoded. Nothing is stored. |
@@ -67,13 +67,17 @@ error. A domain the token's account does not verifiably own returns the same
 3. **Explain** what's wrong, why it lets mail be spoofed or land in spam, and what
    the fix achieves.
 4. **Get the DMARC fix** with `build_dmarc_upgrade`. It derives the alignment gate
-   **server-side** — you cannot ask for `p=reject` without the evidence; it returns
-   `p=reject` only when SPF is aligned and a DKIM selector was found, else caps at
-   `p=quarantine`. **`record` may be `null`** (the domain does not exist; the
-   DMARC lookup itself hit NXDOMAIN while the existence probe did not resolve;
-   the DMARC lookup temp-failed; or the domain already applies a policy at least
-   as strong as the scan justifies — compared by effect, the `p` and `pct` the
-   record would set, not by bytes) —
+   **server-side** — you cannot ask for a stronger rung than the evidence carries.
+   A scan tops out at `p=quarantine`, returned only when SPF is aligned and a DKIM
+   selector was found; **`p=reject` is never scan-derived** — the readiness engine
+   unlocks it from aggregate-report (RUA) evidence collected by monitoring. Built
+   records carry no `pct`/`rf`/`ri` (deprecated by RFC 9989). **`record` may be
+   `null`** (the domain does not exist; the DMARC lookup itself hit NXDOMAIN while
+   the existence probe did not resolve; the DMARC lookup temp-failed; there is no
+   alignment signal at all, so the answer is reporting first — publish `rua=` and
+   let evidence accrue; or the domain already applies a policy at least as strong
+   as the scan justifies — compared by effect, the policy class the record would
+   set, not by bytes) —
    relay the `rationale` and never compose a record of your own to fill the gap.
    **`policy` describes the
    returned record** and is `null` whenever `record` is; the domain's observed
