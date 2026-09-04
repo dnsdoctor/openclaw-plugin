@@ -17,6 +17,7 @@ import {
   ApiError,
   DEFAULT_API_BASE,
   DnsDoctorApi,
+  PAYMENT_REQUIRED_MESSAGE,
   RATE_LIMITED_MESSAGE,
   TRANSIENT_SUFFIX,
   decodeBase64,
@@ -70,6 +71,14 @@ describe("transient failures are marked, never reported as verdicts", () => {
     fetchMock.mockResolvedValue(jsonResponse(429, {}));
     const error = await failureOf(new DnsDoctorApi().getJson("/api/v1/alerts"));
     expect(error.message).toBe(RATE_LIMITED_MESSAGE);
+  });
+
+  it("maps the x402 402 to the rate limit it is, transient and named", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(402, {}));
+    const error = await failureOf(new DnsDoctorApi().postJson("/api/v1/scan", {}));
+    expect(error.message).toBe(PAYMENT_REQUIRED_MESSAGE);
+    expect(error.status).toBe(402);
+    expect(error.transient).toBe(true);
   });
 
   it("treats a 503 as transient — the parked-domain pack fails closed there", async () => {
