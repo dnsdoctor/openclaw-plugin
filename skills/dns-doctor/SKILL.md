@@ -159,7 +159,7 @@ curl -s -X POST https://dnsdoctor.dev/api/tools/reverse-dns-check \
 record is genuinely absent. ⚠️ **Two resolvers is the whole sample: never
 describe it as worldwide, global, or propagation coverage.** When the question
 really is "has my change gone global", use `/api/tools/propagation-check`: it
-reads one name from six vantage points on separate continents under a single
+reads one name from six vantage points on four continents under a single
 deadline and returns the per-vantage grid plus a deterministic verdict. It is
 **observation only** — no record is composed and no fix is proposed. A vantage
 that did not answer is an unreached row carrying its reason, never a negative

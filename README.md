@@ -1,7 +1,7 @@
 # DNS Doctor — OpenClaw plugin
 
-Wraps the hosted DNS Doctor MCP server as an OpenClaw plugin so your agent can
-scan, fix and verify a domain's DNS — email authentication (SPF, DMARC, DKIM)
+A native OpenClaw plugin (published on ClawHub as `@dnsdoctor/openclaw-plugin`)
+plus a ClawHub skill, so your agent can scan, fix and verify a domain's DNS — email authentication (SPF, DMARC, DKIM)
 first, plus multi-region propagation, SPF include supply-chain audits, MX, DNS
 health, blacklists and domain/SSL expiry. Every fix record is generated and validated by a deterministic
 engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**.
@@ -10,18 +10,24 @@ engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**
 
 ```
 openclaw-plugin/
-├── plugin.json              # manifest wrapping the MCP endpoint
+├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 16 tools)
+├── package.json             # builds src/ → dist/index.js with tsc; zero runtime deps
+├── src/{index,api,routes}.ts # the plugin: 16 registerTool wrappers over the public REST API
+├── tools.json               # the tool definitions, generated from the server — never authored here
+├── tests/                   # the invariant tests (definitions only from tools.json; nothing composed)
+├── plugin.json              # the older manifest wrapping the hosted MCP endpoint
 ├── GUIDANCE.md              # the scan → diagnose → fix workflow + the verbatim-record rule
-├── skills/dns-doctor/       # the ClawHub-publishable skill (REST-first, curl-only)
+├── skills/dns-doctor/       # the ClawHub skill (REST-first, curl-only)
 │   └── SKILL.md
 ├── LICENSE                  # Apache-2.0
 └── README.md
 ```
 
-> **Schema note:** OpenClaw's manifest format evolves. Validate `plugin.json`
-> against the current OpenClaw plugin docs before publishing and correct any field
-> names if they've changed — the MCP endpoint (`https://dnsdoctor.dev/mcp`, HTTP
-> transport) is the part that must survive.
+The native plugin is a thin client in front of the public REST API at
+`https://dnsdoctor.dev` — it composes no record and no URL, and relays every API
+field verbatim. `plugin.json` is the older manifest that points an MCP-capable
+OpenClaw at the hosted server (`https://dnsdoctor.dev/mcp`); both expose the
+same 16 tools.
 
 ## Tools
 
@@ -53,11 +59,20 @@ one-off diagnosis.
 
 ## Install
 
-1. Copy this `openclaw-plugin/` directory into your OpenClaw plugins location (or
-   install it from the OpenClaw plugin index once listed).
-2. Enable the `dns-doctor` plugin. It connects to `https://dnsdoctor.dev/mcp` over
-   streamable HTTP.
-3. The agent guidance in [GUIDANCE.md](./GUIDANCE.md) loads with the plugin.
+The native plugin, from ClawHub:
+
+```bash
+openclaw plugins install @dnsdoctor/openclaw-plugin
+```
+
+Or from this checkout: `npm ci && npm test && npm run build`, then point OpenClaw
+at the directory (`openclaw.plugin.json` names `dist/index.js`). Set
+`DNSDOCTOR_API_TOKEN` in the plugin's environment to unlock the two token-gated
+monitoring reads; everything else works anonymously.
+
+The MCP route instead: enable `plugin.json` and OpenClaw connects to
+`https://dnsdoctor.dev/mcp` over streamable HTTP. The agent guidance in
+[GUIDANCE.md](./GUIDANCE.md) applies to both.
 
 ## Optional: API token for monitored domains
 
