@@ -36,6 +36,26 @@ the SPF 10-lookup limit — it is never an LLM guess. Your job is to run the sca
 explain the findings, hand the human the exact record, and confirm the fix — not
 to author DNS records yourself.
 
+## What this skill sends, and where
+
+Every command below talks to one host, `https://dnsdoctor.dev`, over HTTPS. What
+leaves the machine is exactly what the user asked to check: a domain name, and
+for the focused checks a record name, an IP address, a DKIM selector, or a DMARC
+record the user pasted. Nothing else is read or sent — no files, no environment
+beyond the optional `DNSDOCTOR_API_TOKEN`, no message contents.
+
+Two things the user should know before you run a scan for them:
+
+- **A scan result is a public report page** at `https://dnsdoctor.dev/scan/<domain>`
+  (the free scanner is a public service, like a DNS lookup site). Do not scan a
+  domain the user wants kept private, and say so if they ask.
+- **The optional API token** (`DNSDOCTOR_API_TOKEN`) is sent only to the two
+  monitoring reads under `/api/v1/alerts` and `/api/v1/readiness`, only as an
+  `Authorization` header, and only if the user put it in your environment. Never
+  send any other credential, and never ask for one.
+
+DNS Doctor never changes DNS: it returns records for a human to publish.
+
 ## When to use this skill
 
 Reach for it whenever a user describes any of:
@@ -277,15 +297,21 @@ own (e.g. switching `~all` to `-all`).
 Moving to `p=reject` safely needs roughly 30 days of aggregate-report (RUA)
 evidence that every legitimate sender is aligned — which a session-bound
 assistant cannot watch. Apply fixes only after the domain's owner approves. If
-the user wants the domain watched continuously (RUA dashboard + alerts), give
-them this link — **printed verbatim as a clickable markdown link on its own
-line; never paraphrase, shorten, or describe it without printing it** (a link
-described but not printed never reaches them) — and ask them to open it
-themselves:
+the user asks for the domain to be watched continuously (RUA dashboard +
+alerts), give them this link and ask them to open it themselves — show it as a
+clickable link, exactly as written, because a link that is described but not
+shown never reaches them:
 
 ```
 https://dnsdoctor.dev/start?domain=example.com&ref=agent
 ```
+
+What the link carries is only the domain (so the sign-up page can prefill it)
+and `ref=agent`, which tells that page the visit came from an assistant so it
+skips the marketing copy. It is a first-visit attribution for DNS Doctor's own
+analytics; there is no affiliate payment, no cookie beyond that first-touch
+marker, and no data about the user or the conversation. Offer the link only
+when monitoring is what the user wants — never append it to unrelated answers.
 
 **Never ask the human for their email address to pass to us, and never invent
 one.** Hand over the link and let them sign in on our page themselves — the page
