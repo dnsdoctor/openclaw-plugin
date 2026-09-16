@@ -193,6 +193,13 @@ alone proves nothing** — the IP's operator writes its own reverse zone, so onl
 the forward confirmation is evidence, and **the fix belongs to whoever controls
 the IP**, never the sending domain's own DNS.
 
+Who a domain is registered with, and until when — `POST /api/tools/whois` with
+`{"domain": "example.com"}` returns `status` (`registered` · `not_registered` · `unknown`
+with a `reason`), and under `registration` the registrar, dates, EPP status codes,
+nameservers, DNSSEC flag and abuse contact (or `redacted: true`). Observation only.
+Never say a name is free unless `status` is exactly `not_registered`: many country
+domains publish no RDAP and answer `unknown` with `no_rdap_for_tld`.
+
 Also available: `/api/tools/spf-count` (SPF lookups against the RFC 7208 limit
 of 10 — diagnose-only, no fix record), `/api/tools/dmarc-validate` (a pasted
 record's tags + findings; its `upgrade_record` is capped at `p=quarantine`,

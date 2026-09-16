@@ -10,7 +10,7 @@ engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**
 
 ```
 openclaw-plugin/
-├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 16 tools)
+├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 20 tools)
 ├── package.json             # builds src/ → dist/index.js with tsc; zero runtime deps
 ├── src/{index,api,routes}.ts # the plugin: 16 registerTool wrappers over the public REST API
 ├── tools.json               # the tool definitions, generated from the server — never authored here
@@ -43,6 +43,7 @@ same 16 tools.
 | `parse_dmarc_report` | Parse an aggregate (RUA) report file into rows. |
 | `check_record` | Read any DNS record type for a name. |
 | `check_propagation` | Whether a DNS change has gone global: six vantage points (five owner-run probes plus the server's own resolver) read the same name, returning the grid plus a deterministic verdict. Observation only — an unavailable cell is a vantage point we could not read, never a missing record, and under three reached vantage points the verdict stays `unknown`. |
+| `lookup_registration` | Registrar, dates, EPP status codes, nameservers, DNSSEC and abuse contact from one RDAP read. Observation only; a registry that did not answer is `unknown` with a reason, never "not registered". |
 | `check_reverse_dns` | PTR / forward-confirmed reverse DNS for an IP. |
 | `audit_spf_includes` | The SPF include/redirect tree — who can transitively send as the domain, with typed findings (broken include, confirmed-unregistered include, expiring registration, nested `+all`). Analysis only; no SPF fix record. |
 | `build_parked_domain_records` | The Null MX + `v=spf1 -all` + `p=reject; np=reject` hardening pack for a domain that sends no mail. The server re-checks DNS itself and refuses when it finds evidence of mail. |
