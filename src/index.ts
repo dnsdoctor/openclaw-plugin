@@ -193,15 +193,15 @@ export function unroutedTools(): string[] {
 }
 
 /**
- * The tool factory the gateway calls: all 20 tools, built from one context.
+ * The tool factory the gateway calls: all 22 tools, built from one context.
  *
  * All three config sources the context may carry are consulted, freshest first:
  * `getRuntimeConfig()` (a getter, so a config edit applies without a reload),
  * then the `runtimeConfig` snapshot, then the unresolved `config`. Every one of
  * them is optional on `OpenClawPluginToolContext`, and reading only the first
  * two would silently drop a configured `apiToken` on a gateway that populates
- * the third — `get_alerts`/`get_readiness` would then 401 with guidance telling
- * the operator to set a token they already set.
+ * the third — `get_alerts`/`get_readiness`/`get_lookalikes` would then 401 with
+ * guidance telling the operator to set a token they already set.
  *
  * The fallback is on the RESOLVED settings, not on the source object being
  * present: `settingsFromConfig`'s own contract is that the per-plugin entry map

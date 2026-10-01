@@ -82,9 +82,10 @@ export function resolveApiBase(settings: PluginSettings = {}): string {
 /**
  * The bearer token, when one is configured — sent on every request, GET included.
  *
- * Most tools work anonymously and a token only raises the budget, but the two
- * monitoring reads (`get_alerts`, `get_readiness`) REQUIRE one: without it the
- * API answers 401 and its `detail` is the guidance, which `toApiError` relays.
+ * Most tools work anonymously and a token only raises the budget, but the three
+ * monitoring reads (`get_alerts`, `get_readiness`, `get_lookalikes`) REQUIRE
+ * one: without it the API answers 401 and its `detail` is the guidance, which
+ * `toApiError` relays.
  */
 export function resolveApiToken(settings: PluginSettings = {}): string | undefined {
   return trimmed(settings.apiToken) ?? trimmed(process.env.DNSDOCTOR_API_TOKEN);
