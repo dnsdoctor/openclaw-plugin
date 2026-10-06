@@ -16,9 +16,9 @@ scan, explain the findings, hand the human the exact record, confirm the fix.
 | `get_report` | `{ domain }` | Persisted report (scans once if none exists). |
 | `build_dmarc_upgrade` | `{ domain }` | A validated DMARC enforcement record + rationale. Scans fresh — the record edits the domain's *current* tags, so it is never built on a stale one. |
 | `start_monitoring_signup` | `{ domain }` | A sign-up link to hand to the human who owns the domain, plus a `message` to relay. **Print the `signup_url` verbatim as a clickable markdown link on its own line — never paraphrase, shorten, or describe it without printing it.** **Sends no email and creates nothing** — the human opens the link, signs in on our page themselves (a social provider or an emailed link, whichever that deployment offers), and the domain is carried over to their dashboard, already filled in, from there. |
-| `add_monitored_domain` | `{ domain }` | **Needs a linked account.** Adds the domain to the user's monitoring and returns the ownership TXT record to publish, where their DNS is hosted, a provider-specific guide link and — where the provider serves our template — a one-click apply URL. |
-| `check_domain_verification` | `{ domain }` | **Needs a linked account.** Re-checks the ownership record and marks it verified on a match; says WHICH outcome and which nameservers were asked. A `transient` outcome is OUR lookup, never a verdict about their DNS. On success it carries the DMARC reporting record, which REPLACES the existing DMARC TXT. |
-| `get_domain_records` | `{ domain }` | **Needs a linked account.** Read-only: the ownership record while unverified, the DMARC reporting record once verified, and whether we have observed it published. |
+| `add_monitored_domain` | `{ domain }` | **Needs a linked account.** Adds the domain to the user's monitoring and returns the TXT ownership challenge (the alternative record; the one DMARC record to publish comes from `check_domain_verification`), where their DNS is hosted, a provider-specific guide link and — where the provider serves our template — a one-click apply URL. |
+| `check_domain_verification` | `{ domain }` | **Needs a linked account.** Re-checks ownership and marks the domain verified on a match — either record proves it: the DMARC record with our report address, or the TXT record instead. Says WHICH outcome and which nameservers were asked. A `transient` outcome is OUR lookup, never a verdict about their DNS. It also carries the DMARC reporting record — on a pending domain too, where it is the one record to publish — which REPLACES the existing DMARC TXT rather than sitting beside it. |
+| `get_domain_records` | `{ domain }` | **Needs a linked account.** Read-only: the TXT challenge while unverified, the DMARC reporting record once it has been issued (on a pending domain too — `check_domain_verification` issues it; either record proves ownership), and whether we have observed it published. |
 
 Twelve focused tools for the single questions a full scan over-answers, each on
 the same validating engine:
@@ -157,7 +157,9 @@ whichever sign-in methods are available (a social provider or an emailed link).
 their free account and carries the domain over to their dashboard, already
 filled in — nothing more. Daily
 monitoring is gated on proving they control the domain, so they finish by
-publishing a TXT record the dashboard shows them. Relay the tool's returned
+publishing one DNS record the dashboard shows them: the DMARC record with our
+report address (it proves ownership and starts the reports), or a TXT record
+instead if they cannot edit DMARC. Relay the tool's returned
 `message` verbatim instead of paraphrasing it into "we're now watching your
 domain".
 
@@ -209,7 +211,7 @@ will improve by. An invented number beside real evidence reads as scan output.
   approves, `check_record` each (`mx`, `spf`, `dmarc`).
 - **The operate loop (a monitored domain, over time).** `start_monitoring_signup`
   (hand over the `signup_url` printed verbatim as a clickable markdown link on
-  its own line, never merely described) → the human signs in and publishes the TXT ownership record (nothing is
+  its own line, never merely described) → the human signs in and publishes one DNS record — the DMARC record with our report address, or the TXT instead (nothing is
   readable until verification passes) → `get_alerts` on a cadence, paging down
   with `before` until `next_before` is `null` before advancing `since`, and
   de-duplicating on `id` → `get_readiness` before proposing enforcement

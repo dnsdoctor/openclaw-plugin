@@ -111,7 +111,9 @@ payment.
 ### Monitoring reads (token required, read-only)
 
 For a domain the account already monitors *and has verified* — nothing here is
-readable before the TXT ownership record is published and verification passes.
+readable before the owner publishes one DNS record their dashboard shows them
+(the DMARC record with our report address, or a TXT record instead) and
+verification passes.
 
 ```bash
 # The account's alert log, newest first:
@@ -358,8 +360,9 @@ Opening it sends no email and creates nothing: the page explains what monitoring
 does and asks them to sign in themselves. **Do not promise that
 opening the link starts monitoring** — signing in creates their free account and
 carries the domain over to their dashboard already filled in, and daily
-monitoring starts only after they prove control by publishing a TXT record the
-dashboard shows them.
+monitoring starts only after they prove control by publishing one DNS record the
+dashboard shows them: the DMARC record with our report address (it proves
+ownership and starts the reports), or a TXT record instead.
 
 Once that is done and the owner has put a token in your environment, the loop
 over time is: `GET /v1/alerts` on a cadence (paging down with `before` until
