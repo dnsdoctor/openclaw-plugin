@@ -53,6 +53,17 @@ Anonymous or invalid-token calls to any of them are refused with the page the ow
 mints a token on. Relay the page; do not retry around it, and never ask for a
 credential.
 
+The email test — how one real message authenticated. The user sends one email of
+their choosing to a single-use address; DNS Doctor keeps only the verdicts and
+selected header facts (no body, no attachments) for 24 hours, or 90 days for a test
+started with an account:
+
+| Tool | Input | Returns |
+|---|---|---|
+| `start_email_test` | `{}` | A single-use `address` (valid about an hour, one message), a `test_id`, `expires_at`, and `limit` — which daily limit applied (`anonymous` per IP; `account` with a token). Print the address exactly as returned and ask the user to send ONE email to it from the sender they want to test. |
+| `get_email_test` | `{ test_id }` | `status`: `pending` (not arrived, or still being checked — ask again), `received`, `expired` or `error`. Once received, `result` holds the envelope, SPF with alignment, every DKIM signature, DMARC (`pass`/`fail`/`none`/`temperror`, the record, the disposition the policy implies), hygiene, blocklist status and a `score` out of 10 with every deduction itemized; `advice` lists next steps. A `temperror` was not scored and is never a failure. `result.dmarc.fix` is engine-generated — present it verbatim. `ai_assessment` is an automated read of a redacted excerpt: attribute it as such, never present it as a spam score. A new test proves a change: each address takes one message. |
+| `list_email_tests` | `{ domain?, limit? }` | **Token required.** The account's own tests, newest first (`limit` 1-50, default 20): `test_id`, `status`, `created_at`, `received_at`, `from_domain`, `score`, `dmarc_result` and `report_url`. Call `get_email_test` for one in full. Never another account's tests. |
+
 Domains are normalized server-side; a malformed domain returns a clean tool
 error. A domain the token's account does not verifiably own returns the same
 "not found" as one that does not exist — deliberate, and not to be probed around.
@@ -224,9 +235,9 @@ will improve by. An invented number beside real evidence reads as scan output.
 
 ## Connect
 
-- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the fifteen
-  diagnosis tools. `get_alerts`, `get_readiness`, `get_lookalikes` and the `dnsdoctor://domains`
-  resource are always *listed* and need an `Authorization: Bearer dnsd_…` token;
+- **HTTP (default):** `https://dnsdoctor.dev/mcp` — anonymous access has the eighteen
+  diagnosis tools. `get_alerts`, `get_readiness`, `get_lookalikes`, `list_email_tests` and the
+  `dnsdoctor://domains` resource are always *listed* and need an `Authorization: Bearer dnsd_…` token;
   without a valid one the call is refused with guidance rather than hidden.
   **You cannot mint that token** — the account owner creates it while signed in at
   `/dashboard/settings`, and the refusal names the page. Relay the link; never ask

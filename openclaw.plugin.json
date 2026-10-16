@@ -21,12 +21,15 @@
       "generate_dmarc_record",
       "get_alerts",
       "get_domain_records",
+      "get_email_test",
       "get_lookalikes",
       "get_readiness",
       "get_report",
+      "list_email_tests",
       "lookup_registration",
       "parse_dmarc_report",
       "scan_domain",
+      "start_email_test",
       "start_monitoring_signup",
       "validate_dmarc_record"
     ]

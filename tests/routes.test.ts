@@ -60,8 +60,8 @@ describe("route table ↔ tools.json", () => {
     expect(unroutedTools()).toEqual([]);
   });
 
-  it("carries the 22 tools the backend publishes", () => {
-    expect(TOOLS).toHaveLength(22);
+  it("carries the 25 tools the backend publishes", () => {
+    expect(TOOLS).toHaveLength(25);
   });
 
   it.skipIf(!existsSync(CLIENT_SRC))(

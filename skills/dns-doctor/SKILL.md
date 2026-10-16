@@ -1,6 +1,6 @@
 ---
 name: dns-doctor
-description: DNS diagnostics and email authentication for any domain, via the DNS Doctor public API. Scan SPF, DKIM, DMARC, MX, DNS health, blacklists and domain/TLS expiry; look up registration; see which close look-alike names resolve or accept mail; check a record on the domain's own nameservers and its propagation from six vantage points; count SPF lookups and audit SPF includes; validate or generate DMARC records. Fix records come from a validating engine, never guessed and are presented for a human to publish. Free per caller; x402 pay-per-call past the cap.
+description: DNS diagnostics and email authentication for any domain, via the DNS Doctor public API. Scan SPF, DKIM, DMARC, MX, DNS health, blacklists and domain/TLS expiry; look up registration; see which close look-alike names resolve or accept mail; check a record on the domain's own nameservers and its propagation from six vantage points; count SPF lookups and audit SPF includes; validate or generate DMARC records; test how one real email authenticates (SPF, DKIM, DMARC) by sending it to a single-use address. Fix records come from a validating engine, never guessed and are presented for a human to publish. Free per caller; x402 pay-per-call past the cap.
 license: Apache-2.0
 compatibility: Requires curl and outbound HTTPS to dnsdoctor.dev.
 metadata:
@@ -36,6 +36,14 @@ about; the look-alike names are generated and checked on our side. Nothing else
 is read or sent — no files, no environment beyond the optional
 `DNSDOCTOR_API_TOKEN`, no message contents.
 
+The email test is the one case where the USER sends something: one email of
+their choosing, from their own mail system, to the single-use address
+`POST /api/tools/email-test` returns. DNS Doctor keeps only the verdicts and
+selected header facts (no body, no attachments) for 24 hours, or 90 days for a
+test started with an account token, and a redacted excerpt (subject and the
+start of the text, with addresses, links and long numbers masked) goes to an AI
+language-model provider for the optional hints.
+
 Two things the user should know before you run a scan for them:
 
 - **A scan result is a public report page** at `https://dnsdoctor.dev/scan/<domain>`
@@ -43,8 +51,9 @@ Two things the user should know before you run a scan for them:
   domain the user wants kept private, and say so if they ask.
 - **The optional API token** (`DNSDOCTOR_API_TOKEN`) is sent only to the three
   monitoring reads under `/api/v1/alerts`, `/api/v1/readiness` and
-  `/api/v1/lookalikes`, only as an `Authorization` header, and only if the user
-  put it in your environment. Never send any other credential, and never ask for
+  `/api/v1/lookalikes`, the email-test history at `/api/v1/email-tests`, and the
+  email test itself when the user wants it kept in their account; only as an
+  `Authorization` header, and only if the user put it in your environment. Never send any other credential, and never ask for
   one.
 
 DNS Doctor never changes DNS: it returns records for a human to publish.
@@ -62,6 +71,8 @@ Reach for it whenever a user describes any of:
 - "has someone registered a domain that looks like ours?" (look-alike or
   typosquat names)
 - "check these 20 domains" — a client list or a portfolio to audit at once
+- "is our mail actually DKIM-signed?" / "does a real message pass DMARC?" — a
+  published key does not prove the sender signs; one test message does
 
 ## API — plain HTTPS, no auth needed for scans
 
@@ -82,9 +93,10 @@ Each check in the response carries `check`, `status`, `title`, an optional
 rate-limited per IP; a `429` means slow down, not failure.
 
 An API token (`Authorization: Bearer dnsd_…`, free account) raises that limit and
-is **required** for the four reads that return one account's own monitoring
-data: `GET /api/v1/domains`, `GET /api/v1/alerts`, `GET /api/v1/readiness` and
-`GET /api/v1/lookalikes`. Without a valid token those four answer `401` — and
+is **required** for the five reads that return one account's own data:
+`GET /api/v1/domains`, `GET /api/v1/alerts`, `GET /api/v1/readiness`,
+`GET /api/v1/lookalikes` and `GET /api/v1/email-tests`. Without a valid token
+those five answer `401` — and
 the body of that refusal is the guidance, so relay it rather than paraphrasing.
 Everything else on this page works anonymously. **You cannot create that
 token** — the account owner mints it while signed in at `/dashboard/settings`,
@@ -174,6 +186,58 @@ All three return `422` on a malformed domain (alerts also on an unknown `type` o
 a bad cursor), and the same opaque `404` for a domain the token's account does
 not verifiably own as for one that does not exist. That opacity is deliberate; do
 not probe around it.
+
+### Test a real email (`/api/tools/email-test`)
+
+For "is our mail actually signed?", "why does this sender land in spam?", or
+proving DKIM before tightening DMARC:
+
+```bash
+# 1. Start a test (no body). Add the token header to keep it in the account:
+curl -s -X POST https://dnsdoctor.dev/api/tools/email-test
+
+# 2. After the user has sent ONE email to the returned address:
+curl -s 'https://dnsdoctor.dev/api/tools/email-test?test_id=<test_id>'
+```
+
+The start returns `test_id`, a single-use `address` (valid about an hour, one
+message), `status`, `expires_at` and `limit` (`applied` is `anonymous`, per IP,
+or `account`; `per_day`; `used_today`). **Print the address exactly as
+returned** and ask the user to send one email to it from the sender they want
+to test (the mailbox, the newsletter tool, the app). A `429` means the day's
+test limit is used; a `503` means the test is not available right now — neither
+is a verdict about their mail.
+
+The read returns `status`: `pending` (not arrived, or still being checked — wait
+a little and ask again; do not start a new test unless it is `expired`),
+`received`, `expired` or `error`. Once `received`, `result` holds the envelope
+(sending IP, PTR and forward confirmation, HELO, STARTTLS), SPF with alignment,
+every DKIM signature (`d=`, `s=`, result, key size, alignment), DMARC (`pass`,
+`fail`, `none` or `temperror`, the record, alignment modes, the disposition the
+policy implies), hygiene, blocklist status and a `score` out of 10 with every
+deduction itemized; `advice` lists next steps and `report_url` is the result
+page. Relay the score with its deductions, then the failing parts first. A
+`temperror` is a lookup that did not complete — never a failure, and it was not
+scored. `result.dmarc.fix` (a missing or `p=none` record) is engine-generated:
+present its record verbatim at its host. `ai_assessment` is an automated read of
+the redacted excerpt — attribute it as such, never present it as a spam score.
+A `404` means the id is unknown or past retention (24 hours without an account,
+90 days in one); after its first day, a test kept in an account reads only with
+that account's token. After the human changes something, a NEW test proves it: each
+address takes one message.
+
+The account's own earlier tests (token required, `monitoring:read`):
+
+```bash
+curl -s -H "Authorization: Bearer $DNSDOCTOR_API_TOKEN" \
+  'https://dnsdoctor.dev/api/v1/email-tests?limit=20'
+```
+
+Newest first, inside retention; `domain` narrows to tests whose From named that
+organization, `limit` is 1..50 (default 20). Each row carries `test_id`,
+`status`, `created_at`, `received_at`, `from_domain`, `score`, `dmarc_result`
+and `report_url`; read one in full with the `GET` above. Never another
+account's tests.
 
 ### Focused checks (`https://dnsdoctor.dev/api/tools/…`, all `POST` JSON)
 
