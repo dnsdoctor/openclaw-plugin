@@ -1,6 +1,6 @@
 ---
 name: dns-doctor
-description: DNS diagnostics and email authentication for any domain, via the DNS Doctor public API. Scan SPF, DKIM, DMARC, MX, DNS health, blacklists and domain/TLS expiry; look up registration; see which close look-alike names resolve or accept mail; check a record on the domain's own nameservers and its propagation from six vantage points; count SPF lookups and audit SPF includes; validate or generate DMARC records; test how one real email authenticates (SPF, DKIM, DMARC) by sending it to a single-use address. Fix records come from a validating engine, never guessed and are presented for a human to publish. Free per caller; x402 pay-per-call past the cap.
+description: DNS diagnostics and email authentication for any domain, via the DNS Doctor public API. Scan SPF, DKIM, DMARC, MX, DNS health, blacklists and domain/TLS expiry; look up registration; see which close look-alike names resolve or accept mail; check a record on the domain's own nameservers and its propagation from six vantage points; count SPF lookups and audit SPF includes; validate or generate DMARC records; test how one real email authenticates (SPF, DKIM, DMARC) by sending it to a single-use address; check BIMI logo setup. Fix records come from a validating engine, never guessed and are presented for a human to publish. Free per caller; x402 pay-per-call past the cap.
 license: Apache-2.0
 compatibility: Requires curl and outbound HTTPS to dnsdoctor.dev.
 metadata:
@@ -51,7 +51,8 @@ Two things the user should know before you run a scan for them:
   domain the user wants kept private, and say so if they ask.
 - **The optional API token** (`DNSDOCTOR_API_TOKEN`) is sent only to the three
   monitoring reads under `/api/v1/alerts`, `/api/v1/readiness` and
-  `/api/v1/lookalikes`, the email-test history at `/api/v1/email-tests`, and the
+  `/api/v1/lookalikes`, the email-test history at `/api/v1/email-tests`, the
+  account's domain list at `/api/v1/domains/mine`, and the
   email test itself when the user wants it kept in their account; only as an
   `Authorization` header, and only if the user put it in your environment. Never send any other credential, and never ask for
   one.
@@ -73,6 +74,8 @@ Reach for it whenever a user describes any of:
 - "check these 20 domains" — a client list or a portfolio to audit at once
 - "is our mail actually DKIM-signed?" / "does a real message pass DMARC?" — a
   published key does not prove the sender signs; one test message does
+- "how do we get our logo in Gmail / Yahoo / Apple Mail?" / "why doesn't our BIMI
+  logo show?"
 
 ## API — plain HTTPS, no auth needed for scans
 
@@ -93,10 +96,10 @@ Each check in the response carries `check`, `status`, `title`, an optional
 rate-limited per IP; a `429` means slow down, not failure.
 
 An API token (`Authorization: Bearer dnsd_…`, free account) raises that limit and
-is **required** for the five reads that return one account's own data:
-`GET /api/v1/domains`, `GET /api/v1/alerts`, `GET /api/v1/readiness`,
-`GET /api/v1/lookalikes` and `GET /api/v1/email-tests`. Without a valid token
-those five answer `401` — and
+is **required** for the six reads that return one account's own data:
+`GET /api/v1/domains`, `GET /api/v1/domains/mine`, `GET /api/v1/alerts`,
+`GET /api/v1/readiness`, `GET /api/v1/lookalikes` and `GET /api/v1/email-tests`.
+Without a valid token those six answer `401` — and
 the body of that refusal is the guidance, so relay it rather than paraphrasing.
 Everything else on this page works anonymously. **You cannot create that
 token** — the account owner mints it while signed in at `/dashboard/settings`,
@@ -239,6 +242,17 @@ organization, `limit` is 1..50 (default 20). Each row carries `test_id`,
 and `report_url`; read one in full with the `GET` above. Never another
 account's tests.
 
+Every domain on the account, with its state and the next step (token required):
+
+```bash
+curl -s -H "Authorization: Bearer $DNSDOCTOR_API_TOKEN" \
+  'https://dnsdoctor.dev/api/v1/domains/mine'
+```
+
+Each row: `domain`, `state` (`verified`, `pending`, `verification_lapsed`) and
+`next_step`. Use it when the user asks what they monitor; never guess the list
+from alerts.
+
 ### Focused checks (`https://dnsdoctor.dev/api/tools/…`, all `POST` JSON)
 
 For the single questions a full scan over-answers — same engine, no auth:
@@ -246,7 +260,8 @@ For the single questions a full scan over-answers — same engine, no auth:
 ```bash
 # Did the change land? (kind: spf|dmarc|txt|mx|cname|a|aaaa)
 curl -s -X POST https://dnsdoctor.dev/api/tools/check-record \
-  -H 'Content-Type: application/json' -d '{"domain": "example.com", "kind": "dmarc"}'
+  -H 'Content-Type: application/json' \
+  -d '{"domain": "example.com", "kind": "dmarc", "expected_value": "v=DMARC1; p=none"}'
 
 # Forward-confirmed reverse DNS for one sending IP:
 curl -s -X POST https://dnsdoctor.dev/api/tools/reverse-dns-check \
@@ -254,9 +269,14 @@ curl -s -X POST https://dnsdoctor.dev/api/tools/reverse-dns-check \
 ```
 
 `check-record` reads the record from the domain's OWN nameservers (cache-free)
-*and* from two public caching resolvers, returning `in_sync` plus
-`max_wait_seconds` — the largest remaining cached TTL. Empty `values` means the
-record is genuinely absent. ⚠️ **Two resolvers is the whole sample: never
+*and* from two public caching resolvers. `expected_value` (optional) is the
+value just published. `verdict` is `done` (served, both caches agree), `wait`
+(caches catching up — wait `check_again_after_seconds` before asking again) or
+`edit` (the nameservers do not serve it; `found_at` names where the value was
+observed instead). `not_registered: true` means the domain does not exist; a
+`503` whose detail starts `cant_tell` is a lookup fault, never evidence the
+record is missing. A `429` names `check_again_after_seconds` too. Empty `values`
+means the record is genuinely absent. ⚠️ **Two resolvers is the whole sample: never
 describe it as worldwide, global, or propagation coverage.** When the question
 really is "has my change gone global", use `/api/tools/propagation-check`: it
 reads one name from six vantage points on four continents under a single
@@ -335,6 +355,28 @@ and a wrong one silently de-authorizes a real sender. **Never set the flag on yo
 own judgement — ask the human who owns the domain**, and treat a refusal as the
 answer rather than something to work around.
 
+### Logo in the inbox (BIMI) (`/api/tools/bimi`)
+
+```bash
+# The domain's published BIMI setup, or a candidate logo (+ optional certificate):
+curl -s -X POST https://dnsdoctor.dev/api/tools/bimi \
+  -H 'Content-Type: application/json' \
+  -d '{"domain": "example.com", "logo_url": "https://example.com/logo.svg"}'
+```
+
+A live read of the exact host: `status` (`ready`, `needs_enforcement`,
+`needs_logo`, `declined`, `broken`, `unknown`), `next_step`, the DMARC gate as
+`dmarc_sources`, the published `default._bimi` record, the logo checked as SVG
+Tiny PS, any certificate (chain-verified to a Mark Verifying Authority root, `trust_verified` true / false + `trust_reason` / null when the check could not run; revocation not checked) and
+`mailboxes`. Relay `mailboxes` as **eligibility, never a promise that a logo will
+show**: each mailbox decides, **Gmail needs a VMC or CMC certificate**, Apple Mail
+a VMC, Yahoo/AOL show logos only for senders with enough volume and reputation,
+and Outlook does not support BIMI. `needs_enforcement` comes first: climb the DMARC
+ladder, never skip a step for the logo. With `logo_url`, `generated.record` is the
+engine's record to publish at `generated.host`: present it verbatim; it is `null`
+while DMARC is not at enforcement, so relay `generated.rationale` and never compose
+a BIMI record. `unknown` is a lookup or download that failed: try again.
+
 ## Workflow
 
 1. **Scan** with `POST /scan` (fresh) or `GET /report/{domain}` (accept recent).
@@ -370,9 +412,10 @@ answer rather than something to work around.
    publish it at their DNS host.
 6. **The human applies it.** DNS Doctor never writes DNS. After they paste the
    record, confirm it landed with `/api/tools/check-record` — one record read
-   instead of a seven-check re-scan; `in_sync: false` means the change is real
-   but still cached somewhere. Once in sync, re-scan to confirm the verdict
-   flipped.
+   instead of a seven-check re-scan, with the published value as
+   `expected_value`. On `wait` the change is real but still cached somewhere:
+   wait `check_again_after_seconds`. Once `done`, re-scan to confirm the
+   verdict flipped.
 
 **The DMARC check's `details` can report external RUA authorization** (RFC 7489 §7.1): when the domain sends aggregate reports to a third-party domain that has not published the authorization record, those reports are **silently discarded** — the DMARC record still looks correct while the owner collects nothing. Reported as a detail, never a status change (the domain's own config is not at fault), but relay it: a rollout waiting on evidence that never arrives is a stall with no visible cause.
 

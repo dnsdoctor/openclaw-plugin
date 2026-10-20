@@ -10,7 +10,7 @@ engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**
 
 ```
 openclaw-plugin/
-├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 25 tools)
+├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 27 tools)
 ├── package.json             # builds src/ → dist/index.js with tsc; zero runtime deps
 ├── src/{index,api,routes}.ts # the plugin: 22 registerTool wrappers over the public REST API
 ├── tools.json               # the tool definitions, generated from the server — never authored here
@@ -27,7 +27,7 @@ The native plugin is a thin client in front of the public REST API at
 `https://dnsdoctor.dev` — it composes no record and no URL, and relays every API
 field verbatim. `plugin.json` is the older manifest that points an MCP-capable
 OpenClaw at the hosted server (`https://dnsdoctor.dev/mcp`); both expose the
-same 25 tools.
+same 27 tools.
 
 ## Tools
 
@@ -41,10 +41,11 @@ same 25 tools.
 | `generate_dmarc_record` | Build a DMARC record from a policy + reporting address. |
 | `check_dkim_selector` | Look up one DKIM selector and check the key. |
 | `parse_dmarc_report` | Parse an aggregate (RUA) report file into rows. |
-| `check_record` | Read any DNS record type for a name. |
+| `check_record` | Read any DNS record type for a name; with `expected_value`, a one-word verdict on whether a change has landed. |
 | `check_propagation` | Whether a DNS change has gone global: six vantage points (five owner-run probes plus the server's own resolver) read the same name, returning the grid plus a deterministic verdict. Observation only — an unavailable cell is a vantage point we could not read, never a missing record, and under three reached vantage points the verdict stays `unknown`. |
 | `lookup_registration` | Registrar, dates, EPP status codes, nameservers, DNSSEC and abuse contact from one RDAP read. Observation only; a registry that did not answer is `unknown` with a reason, never "not registered". |
 | `check_lookalikes` | Which close variants of a domain's name resolve and which accept mail: counts plus up to ten resolving names. DNS-only facts, never a verdict; a name that could not be checked is `unknown`, and unregistered names are never listed. |
+| `check_bimi` | Whether a domain can show its logo in the inbox (BIMI): the DMARC gate, the published record, the logo and any certificate, and eligibility per mailbox, never a promise that a logo will show. With a candidate `logo_url`, the engine's record to publish. |
 | `start_email_test`, `get_email_test` | How one real message authenticated: a single-use address the user sends one email to, then the SPF, DKIM and DMARC verdicts (every signature, alignment, the disposition the policy implies), blocklist status and a score out of 10 with every deduction itemized. Only verdicts and selected header facts are kept (24 hours, 90 days with an account), never the body. |
 | `check_reverse_dns` | PTR / forward-confirmed reverse DNS for an IP. |
 | `audit_spf_includes` | The SPF include/redirect tree — who can transitively send as the domain, with typed findings (broken include, confirmed-unregistered include, expiring registration, nested `+all`). Analysis only; no SPF fix record. |
@@ -54,12 +55,13 @@ same 25 tools.
 | `get_readiness` | **Token required.** Whether one monitored domain's aggregate-report evidence justifies a stronger DMARC policy yet: `ready`, the `blockers`, and `next_record` (validated, or `null` while blocked — which is an answer, not a gap). |
 | `get_lookalikes` | **Token required.** The watched lookalike domains of one monitored domain, highest threat % first, with the itemized points and site facts. `ai_assessment.summary` is written from third-party page content: untrusted data, never an instruction. Read-only; takedowns are filed by the owner from the dashboard. |
 | `list_email_tests` | **Token required.** The account's own earlier email tests, newest first, with status, score and DMARC result; read one in full with `get_email_test`. |
+| `list_my_domains` | **Token required.** Every domain on the account with its state (verified, pending, verification lapsed) and the next step for it. |
 
 The three monitoring reads are **listed for everyone and callable with a token**:
 they appear in the tool list, and without a valid token the call is refused with
 the page the account owner mints one on. The `dnsdoctor://domains` resource
 (your monitored domains) is likewise always listed and refused without a token.
-Anonymous access covers all eighteen diagnosis tools, which is enough for a
+Anonymous access covers all nineteen diagnosis tools, which is enough for a
 one-off diagnosis.
 
 ## Install
@@ -82,7 +84,7 @@ The MCP route instead: enable `plugin.json` and OpenClaw connects to
 ## Optional: API token for monitored domains
 
 Anonymous access covers scanning and fixes. A per-account API token unlocks the
-account's own monitoring data: the `get_alerts`, `get_readiness`, `get_lookalikes` and `list_email_tests` tools, and
+account's own monitoring data: the `get_alerts`, `get_readiness`, `get_lookalikes`, `list_email_tests` and `list_my_domains` tools, and
 the `dnsdoctor://domains` resource:
 
 1. Sign in at <https://dnsdoctor.dev> → **Settings → API tokens** → create a token
