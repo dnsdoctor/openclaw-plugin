@@ -1,7 +1,7 @@
 /**
  * How each tool reaches the DNS Doctor REST API.
  *
- * This table is a verbatim port of `@dnsdoctor/mcp`'s (`claude-plugin/src/index.ts`)
+ * This table is a verbatim port of `@dnsdoctor/mcp`'s (`claude-plugin/mcp-client/src/index.ts`)
  * and must stay identical to it: both clients speak to the same public API, and a
  * path that drifts on one surface would 404 for that surface's users only —
  * `backend/tests/mcp_server/` pins both tables against the real FastAPI app.

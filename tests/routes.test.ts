@@ -34,7 +34,7 @@ const MANIFEST = JSON.parse(
  * Cross-client parity is owned in the monorepo either way, by this test and by
  * `backend/tests/mcp_server/test_client_routes.py::test_the_clients_dispatch_identically`.
  */
-const CLIENT_SRC = new URL("../../claude-plugin/src/index.ts", import.meta.url);
+const CLIENT_SRC = new URL("../../claude-plugin/mcp-client/src/index.ts", import.meta.url);
 
 /** `{tool: {kind, path?}}` parsed out of the npm client's `ROUTES` literal. */
 function clientRoutes(source: string): Record<string, { kind: string; path?: string }> {
