@@ -69,6 +69,9 @@ export const ROUTES: Record<string, Route> = {
   // The linked account's email-test history (token, monitoring:read).
   list_email_tests: { kind: "query", path: "/api/v1/email-tests" },
   list_my_domains: { kind: "query", path: "/api/v1/domains/mine" },
+  // Start one record watch; its single email goes to the token's account.
+  watch_record_change: { kind: "json", path: "/api/v1/change-watch" },
+  check_domain_names: { kind: "json", path: "/api/tools/check-names" },
 };
 
 /** The report path for a domain — the one route whose argument rides the URL. */

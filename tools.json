@@ -211,6 +211,38 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": true,
+      "readOnlyHint": true,
+      "title": "Check Domain Names"
+    },
+    "description": "Use this when the user is choosing a domain name and wants to know which candidates are already registered. Pass up to 20 candidate names in ONE call (never one call per name). Each name is read live from its registry over RDAP: status is registered | not_registered | unknown. registered carries the registry's own status words (registry_status) and expires_at when published; being_deleted: true (pendingDelete / redemptionPeriod) means it is still registered and cannot be registered yet. not_registered means the registry holds no registration for the name: relay it as exactly that, never as 'available', because premium, reserved and blocked names read the same way. unknown is NOT absence: the registry did not answer, and reason says why (rate_limited, throttled, timeout, registry_error, no_rdap_for_tld). Never tell anyone a name is free unless its status is exactly not_registered, and even then relay caveat as given. Premium status and price are not checked. next_step, when present, is the one thing DNS Doctor can do after a name is registered. Each name counts as one call against the hourly limit. Observation only: nothing is registered, stored or published.",
+    "inputSchema": {
+      "properties": {
+        "names": {
+          "description": "1 to 20 candidate domain names to check in ONE call, e.g. [\"brightlane.com\", \"brightlane.io\"]. Registrable names only (example.com, example.co.uk), not subdomains; duplicates are checked once. Unicode names are accepted and normalized to punycode.",
+          "items": {
+            "maxLength": 253,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Names",
+          "type": "array"
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "title": "check_domain_namesArguments",
+      "type": "object"
+    },
+    "name": "check_domain_names",
+    "title": "Check Domain Names"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true,
       "readOnlyHint": false,
       "title": "Check Domain Verification"
     },
@@ -992,5 +1024,73 @@
     },
     "name": "validate_dmarc_record",
     "title": "Validate DMARC Record"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": false,
+      "title": "Watch Record Change"
+    },
+    "description": "Use this when the user asks to be told when a DNS change they are making has finished (\"let me know when it's live\"). Starts a free watch on ONE record for the signed-in user: DNS Doctor rechecks it every 10 minutes for up to 48 hours with the same verdict as check_record and sends ONE email to the address on their DNS Doctor account: when it is live, when the value has sat at a different name for an hour, when the zone has not served it for 6 hours, or when 48 hours pass. Same arguments as check_record; pass expected_value when the user is publishing a specific value. It reads the record once first and returns that reading: a record that is already live (verdict done), a domain whose nameservers do not answer, or a lookup fault starts nothing. Asking again for the same record returns the running watch, never a second one. Relay `watch.note`. Needs a linked DNS Doctor account; never ask the user for an email address. Nothing is applied to anyone's DNS.",
+    "inputSchema": {
+      "properties": {
+        "domain": {
+          "description": "The domain to check, e.g. example.com. Bare registrable names and subdomains both work; scheme, path or port do not belong here. Unicode names are accepted and normalized to punycode.",
+          "title": "Domain",
+          "type": "string"
+        },
+        "expected_value": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional: the exact value just published (e.g. the DMARC record text, a verification token, '10 mx.example.com'). Given it, the verdict tests for that value and an 'edit' also checks the names a misplaced edit usually lands on (found_at).",
+          "title": "Expected Value"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional label to prepend to the domain (e.g. 'mail' to check mail.<domain>) \u2014 honored for txt, cname, a and aaaa only; spf, dmarc and mx derive their own query name.",
+          "title": "Host"
+        },
+        "kind": {
+          "description": "Which record to read; the right query is derived from it \u2014 'dmarc' reads TXT at _dmarc.<domain> filtered to v=DMARC1, 'spf' reads the apex TXT filtered to v=spf1, so don't prefix the domain yourself.",
+          "enum": [
+            "spf",
+            "dmarc",
+            "txt",
+            "mx",
+            "cname",
+            "a",
+            "aaaa"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "kind"
+      ],
+      "title": "watch_record_changeArguments",
+      "type": "object"
+    },
+    "name": "watch_record_change",
+    "title": "Watch Record Change"
   }
 ]

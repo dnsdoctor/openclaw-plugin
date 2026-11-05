@@ -13,6 +13,7 @@
       "build_parked_domain_records",
       "check_bimi",
       "check_dkim_selector",
+      "check_domain_names",
       "check_domain_verification",
       "check_lookalikes",
       "check_propagation",
@@ -33,7 +34,8 @@
       "scan_domain",
       "start_email_test",
       "start_monitoring_signup",
-      "validate_dmarc_record"
+      "validate_dmarc_record",
+      "watch_record_change"
     ]
   },
   "configSchema": {
