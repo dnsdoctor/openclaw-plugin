@@ -27,6 +27,7 @@
       "get_lookalikes",
       "get_readiness",
       "get_report",
+      "join_agent_mailbox_waitlist",
       "list_email_tests",
       "list_my_domains",
       "lookup_registration",

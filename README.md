@@ -14,7 +14,7 @@ engine — RFC grammar plus the SPF 10-lookup counter — **never an LLM guess**
 
 ```
 openclaw-plugin/
-├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 29 tools)
+├── openclaw.plugin.json     # the native plugin's manifest (contracts.tools = the 30 tools)
 ├── package.json             # builds src/ → dist/index.js with tsc; zero runtime deps
 ├── src/{index,api,routes}.ts # the plugin: 22 registerTool wrappers over the public REST API
 ├── tools.json               # the tool definitions, generated from the server — never authored here
@@ -31,7 +31,7 @@ The native plugin is a thin client in front of the public REST API at
 `https://dnsdoctor.dev` — it composes no record and no URL, and relays every API
 field verbatim. `plugin.json` is the older manifest that points an MCP-capable
 OpenClaw at the hosted server (`https://dnsdoctor.dev/mcp`); both expose the
-same 29 tools.
+same 30 tools.
 
 ## Tools
 

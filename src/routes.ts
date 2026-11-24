@@ -72,6 +72,7 @@ export const ROUTES: Record<string, Route> = {
   // Start one record watch; its single email goes to the token's account.
   watch_record_change: { kind: "json", path: "/api/v1/change-watch" },
   check_domain_names: { kind: "json", path: "/api/tools/check-names" },
+  join_agent_mailbox_waitlist: { kind: "json", path: "/api/agent-mailbox/waitlist" },
 };
 
 /** The report path for a domain — the one route whose argument rides the URL. */

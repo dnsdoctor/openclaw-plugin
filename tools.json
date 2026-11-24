@@ -813,6 +813,64 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Join Agent Mailbox Waitlist"
+    },
+    "description": "Use this when the user wants an email mailbox their AI agent can read and send from, on their own domain. DNS Doctor's mailbox for agents is in preview and not available yet: this tool only adds the user to its waitlist. Ask the user first, because their email address is stored for the waitlist. Pass email (when the account is linked, the linked account's email is used instead), and optionally the domain they would use and note, one line on what the agent would do with the mailbox. Nothing is created, charged or sent, and no mailbox exists after the call. Calling again with the same email changes nothing. The preview is described at https://dnsdoctor.dev/agent-mailbox.",
+    "inputSchema": {
+      "properties": {
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional: the domain the user would put the mailbox on, e.g. example.com.",
+          "title": "Domain"
+        },
+        "email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The user's email address for the waitlist, as they gave it. Leave it out when the DNS Doctor account is linked: the linked account's email is used.",
+          "title": "Email"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional: one line on what the agent would do with the mailbox, in the user's words. Stored up to 200 characters.",
+          "title": "Note"
+        }
+      },
+      "title": "join_agent_mailbox_waitlistArguments",
+      "type": "object"
+    },
+    "name": "join_agent_mailbox_waitlist",
+    "title": "Join Agent Mailbox Waitlist"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
       "readOnlyHint": true,
       "title": "List Email Tests"
     },
